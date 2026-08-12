@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لعبتي Multiplayer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #1a1a2e;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  .game-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    min-width: 0;
+  }
+  
+  h1 {
+    margin-bottom: 8px;
+    font-size: clamp(20px, 3vw, 28px);
+    background: linear-gradient(135deg, #00a2ff, #00ff88);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+  }
+  
+  .info-bar {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .info-badge {
+    padding: 6px 16px;
+    background: #0f3460;
+    border-radius: 20px;
+    font-size: clamp(12px, 1.5vw, 14px);
+  }
+  
+  .info-badge span {
+    color: #00ff88;
+    font-weight: bold;
+  }
+  
+  .canvas-container {
+    flex: 1;
+    position: relative;
+    background: #16213e;
+    border: 3px solid #00a2ff;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+  
+  /* ✨ لوحة الصدارة */
+  .leaderboard {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(15, 52, 96, 0.9);
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 2px solid #ffd700;
+    min-width: 180px;
+    backdrop-filter: blur(5px);
+  }
+  
+  .leaderboard h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #ffd700;
+    text-align: center;
+  }
+  
+  .leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 13px;
+    gap: 10px;
+  }
+  
+  .leaderboard-item .rank {
+    color: #ffd700;
+    font-weight: bold;
+    min-width: 20px;
+  }
+  
+  .leaderboard-item .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .leaderboard-item .score {
+    color: #ffd700;
+    font-weight: bold;
+  }
+  
+  /* الشات */
+  .chat-box {
+    width: 300px;
+    background: #0f3460;
+    display: flex;
+    flex-direction: column;
+    border-left: 3px solid #00a2ff;
+  }
+  
+  .chat-header {
+    padding: 12px;
+    background: #16213e;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 2px solid #00a2ff;
+  }
+  
+  .chat-messages {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .message {
+    padding: 8px 12px;
+    background: #1a1a2e;
+    border-radius: 8px;
+    animation: slideIn 0.3s ease;
+  }
+  
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  
+  .message .meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+  
+  .message .name { font-weight: bold; }
+  .message .time { color: #666; }
+  .message .text { font-size: 13px; word-wrap: break-word; }
+  
+  .message.system {
+    background: #0a2647;
+    border-right: 3px solid #00ff88;
+    font-style: italic;
+    font-size: 12px;
+  }
+  
+  .chat-input {
+    display: flex;
+    padding: 12px;
+    gap: 8px;
+    background: #16213e;
+    border-top: 2px solid #00a2ff;
+  }
+  
+  .chat-input input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #0f3460;
+    background: #1a1a2e;
+    color: white;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 0;
+  }
+  
+  .chat-input input:focus { border-color: #00a2ff; }
+  
+  .chat-input button {
+    padding: 10px 16px;
+    background: #00a2ff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  
+  .chat-input button:hover {
+    background: #0090e0;
+    transform: translateY(-2px);
+  }
+  
+  .chat-messages::-webkit-scrollbar { width: 6px; }
+  .chat-messages::-webkit-scrollbar-track { background: #1a1a2e; }
+  .chat-messages::-webkit-scrollbar-thumb { background: #00a2ff; border-radius: 3px; }
+  
+  /* ✨ Responsive للموبايل */
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+    
+    .game-area { height: 60vh; }
+    
+    .chat-box {
+      width: 100%;
+      height: 40vh;
+      border-left: none;
+      border-top: 3px solid #00a2ff;
+    }
+    
+    .leaderboard {
+      min-width: 140px;
+      padding: 8px 12px;
+    }
+    
+    .leaderboard h3 { font-size: 12px; }
+    .leaderboard-item { font-size: 11px; }
+  }
+  
+  @media (max-width: 480px) {
+    .info-bar { gap: 8px; }
+    .info-badge { padding: 4px 10px; font-size: 11px; }
+    .chat-header { font-size: 14px; padding: 8px; }
+    .chat-messages { padding: 8px; }
+    .message { padding: 6px 10px; }
+    .message .text { font-size: 12px; }
+    .chat-input { padding: 8px; }
+    .chat-input input { padding: 8px 10px; font-size: 12px; }
+    .chat-input button { padding: 8px 12px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="game-area">
+  <h1>🎮 لعبتي Multiplayer</h1>
+  <div class="info-bar">
+    <div class="info-badge">👥 اللاعبين: <span id="count">0</span></div>
+    <div class="info-badge">🪙 العملات: <span id="coins-count">0</span></div>
+    <div class="info-badge">⭐ نقاطك: <span id="my-score">0</span></div>
+  </div>
+  <div class="canvas-container">
+    <canvas id="game"></canvas>
+    <div class="leaderboard" id="leaderboard">
+      <h3>🏆 لوحة الصدارة</h3>
+      <div id="leaderboard-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="chat-box">
+  <div class="chat-header">💬 شات اللاعبين</div>
+  <div class="chat-messages" id="messages"></div>
+  <div class="chat-input">
+    <input type="text" id="chat-input" placeholder="اكتب رسالتك هنا..." maxlength="200">
+    <button onclick="sendMessage()">إرسال</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const container = document.querySelector('.canvas-container');
+  const messagesDiv = document.getElementById('messages');
+  const chatInput = document.getElementById('chat-input');
+  const leaderboardList = document.getElementById('leaderboard-list');
+  
+  let players = {};
+  let coins = [];
+  let myId = null;
+  
+  // ✨ خلّي الكانفاس يتكيف مع حجم الشاشة
+  function resizeCanvas() {
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    draw();
+  }
+  
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+  
+  socket.on('connect', () => {
+    myId = socket.id;
+    const name = prompt('اكتب اسمك يا بطل:');
+    socket.emit('set-name', name || 'لاعب مجهول');
+  });
+  
+  socket.on('players-update', (data) => {
+    players = data;
+    document.getElementById('count').textContent = Object.keys(players).length;
+    
+    // ✨ حدّث نقاطك
+    if (players[myId]) {
+      document.getElementById('my-score').textContent = players[myId].score;
+    }
+    
+    updateLeaderboard();
+    draw();
+  });
+  
+  // ✨ تحديث العملات
+  socket.on('coins-update', (data) => {
+    coins = data;
+    document.getElementById('coins-count').textContent = coins.length;
+    draw();
+  });
+  
+  // ✨ حدّث لوحة الصدارة
+  function updateLeaderboard() {
+    const sorted = Object.values(players)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+    
+    leaderboardList.innerHTML = sorted.map((p, i) => {
+      const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+      return `
+        <div class="leaderboard-item">
+          <span class="rank">${medals[i]}</span>
+          <span class="name" style="color: ${p.color}">${p.name}</span>
+          <span class="score">${p.score}</span>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  socket.on('new-message', (msg) => {
+    addMessage(msg);
+  });
+  
+  function addMessage(msg) {
+    const div = document.createElement('div');
+    div.className = 'message' + (msg.name === 'النظام' ? ' system' : '');
+    div.innerHTML = `
+      <div class="meta">
+        <span class="name" style="color: ${msg.color}">${msg.name}</span>
+        <span class="time">${msg.time}</span>
+      </div>
+      <div class="text">${msg.text}</div>
+    `;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    while (messagesDiv.children.length > 50) {
+      messagesDiv.removeChild(messagesDiv.firstChild);
+    }
+  }
+  
+  function sendMessage() {
+    const text = chatInput.value.trim();
+    if (text) {
+      socket.emit('send-message', text);
+      chatInput.value = '';
+    }
+  }
+  
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+  
+  // ✨ رسم اللعبة (بنسب مئوية عشان تتكيف مع أي حجم)
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // رسم العملات
+    coins.forEach(coin => {
+      const x = (coin.x / 100) * canvas.width;
+      const y = (coin.y / 100) * canvas.height;
+      const radius = Math.min(canvas.width, canvas.height) * 0.02;
+      
+      // توهج
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+      ctx.fill();
+      
+      // العملة
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd700';
+      ctx.fill();
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // القيمة
+      ctx.fillStyle = '#000';
+      ctx.font = `bold ${radius}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(coin.value, x, y);
+    });
+    
+    // رسم اللاعبين
+    for (let id in players) {
+      const p = players[id];
+      const x = (p.x / 100) * canvas.width;
+      const y = (p.y / 100) * canvas.height;
+      const radius = Math.min(canvas.width, canvas.height) * 0.025;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.max(12, radius * 0.8)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(p.name || 'لاعب', x, y - radius - 5);
+      
+      if (id === myId) {
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+    }
+  }
+  
+  // ✨ حركة سلسة مع الماوس (بنسب مئوية)
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    socket.emit('move', { x, y });
+  });
+  
+  // ✨ دعم اللمس للموبايل
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = ((touch.clientX - rect.left) / rect.width) * 100;
+    const y = ((touch.clientY - rect.top) / rect.height) * 100;
+    socket.emit('move', { x, y });
+  }, { passive: false });
+</script>
+
+</body>
+</html>
